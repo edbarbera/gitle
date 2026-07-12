@@ -6,8 +6,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 // Color is disabled when NO_COLOR is set or stdout is not a terminal-ish env.
@@ -135,55 +136,105 @@ func Ask(question, def string) string {
 	return def
 }
 
-// Pick shows a checklist (all ticked by default) and lets the user toggle
-// items until they confirm, returning the indices they kept. With no terminal
-// it selects everything, preserving the "save all" default for scripts.
+// Pick shows an arrow-key checklist with everything ticked by default. Move the
+// highlight with ↑/↓ (or j/k), toggle it with Space, press Enter to confirm.
+// It returns the indices left ticked. With no terminal (piped/scripted) it
+// selects everything, preserving the "save all" default.
 func Pick(prompt string, items []string) []int {
-	if !IsInteractive() {
-		all := make([]int, len(items))
-		for i := range all {
-			all[i] = i
-		}
-		return all
+	if len(items) == 0 {
+		return nil
 	}
+	if !IsInteractive() {
+		return allIndices(len(items))
+	}
+	fd := int(os.Stdin.Fd())
+	old, err := term.MakeRaw(fd)
+	if err != nil {
+		// Terminal won't switch to per-key mode; fall back to saving all.
+		return allIndices(len(items))
+	}
+	defer term.Restore(fd, old)
 
 	selected := make([]bool, len(items))
-	for i := range selected {
-		selected[i] = true
+	setAll(selected, true)
+	cursor := 0
+
+	// draw renders the list in place, redrawing over the previous frame.
+	draw := func(first bool) {
+		if !first {
+			fmt.Fprintf(os.Stdout, "\033[%dA", len(items)+2) // jump back to top
+		}
+		fmt.Fprintf(os.Stdout, "\r\033[K%s\r\n", paint(bold, "[?] "+prompt))
+		for i, it := range items {
+			pointer := "  "
+			if i == cursor {
+				pointer = paint(cyan, "❯ ")
+			}
+			mark := paint(dim, "○")
+			if selected[i] {
+				mark = paint(green, "●")
+			}
+			fmt.Fprintf(os.Stdout, "\r\033[K%s%s %s\r\n", pointer, mark, it)
+		}
+		fmt.Fprintf(os.Stdout, "\r\033[K%s\r\n",
+			paint(dim, "↑/↓ move · space toggle · a all · n none · enter confirm"))
 	}
 
+	draw(true)
 	for {
-		fmt.Println("\n" + paint(bold, prompt))
-		for i, it := range items {
-			box := "[ ]"
-			if selected[i] {
-				box = paint(green, "[x]")
-			}
-			fmt.Printf("  %s %2d. %s\n", box, i+1, it)
-		}
-		fmt.Println(paint(dim, "  Type numbers to tick/untick (e.g. 1 3), 'a' all, 'n' none, Enter to confirm."))
-		fmt.Print(paint(yellow, "> "))
-
-		line, err := stdin.ReadString('\n')
+		b, err := stdin.ReadByte()
 		if err != nil {
 			break
 		}
-		switch cmd := strings.TrimSpace(strings.ToLower(line)); cmd {
-		case "": // confirm current selection
-			return trueIndices(selected)
-		case "a", "all":
-			setAll(selected, true)
-		case "n", "none":
+		done := false
+		switch b {
+		case 3: // Ctrl-C: cancel, select nothing
 			setAll(selected, false)
-		default:
-			for _, tok := range strings.FieldsFunc(cmd, func(r rune) bool { return r == ' ' || r == ',' }) {
-				if n, e := strconv.Atoi(tok); e == nil && n >= 1 && n <= len(items) {
-					selected[n-1] = !selected[n-1]
+			done = true
+		case '\r', '\n':
+			done = true
+		case ' ':
+			selected[cursor] = !selected[cursor]
+		case 'a', 'A':
+			setAll(selected, true)
+		case 'n', 'N':
+			setAll(selected, false)
+		case 'k':
+			if cursor > 0 {
+				cursor--
+			}
+		case 'j':
+			if cursor < len(items)-1 {
+				cursor++
+			}
+		case 0x1b: // escape sequence — arrow keys arrive as ESC [ A/B
+			if b2, _ := stdin.ReadByte(); b2 == '[' {
+				switch b3, _ := stdin.ReadByte(); b3 {
+				case 'A':
+					if cursor > 0 {
+						cursor--
+					}
+				case 'B':
+					if cursor < len(items)-1 {
+						cursor++
+					}
 				}
 			}
 		}
+		if done {
+			break
+		}
+		draw(false)
 	}
 	return trueIndices(selected)
+}
+
+func allIndices(n int) []int {
+	out := make([]int, n)
+	for i := range out {
+		out[i] = i
+	}
+	return out
 }
 
 func setAll(b []bool, v bool) {

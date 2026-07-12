@@ -10,7 +10,7 @@ existing credentials, and anything else you already use.
 | You type | What it does | Real git |
 | --- | --- | --- |
 | `gitle start` | Guided setup: track the folder, name yourself, add a .gitignore, first save, connect to GitHub | `git init` + config, and more |
-| `gitle save ["message"]` | Pick which changed files to include (checklist), then save a snapshot | `git add` (chosen files) `&& git commit` |
+| `gitle save ["message"]` | Arrow-key checklist to pick which files to include, then save a snapshot (`--all` saves everything) | `git add` (chosen files) `&& git commit` |
 | `gitle undo` | Undo your last save, keeping your changes | `git reset --soft HEAD~1` |
 | `gitle send` | Send your saved work online (offers to create a GitHub repo if there isn't one) | `git push` (sets upstream first time) |
 | `gitle grab` | Grab everyone's latest work | `git pull --rebase` |
@@ -45,21 +45,24 @@ prompting.
 ## Picking what to save
 
 Run `gitle save` in a terminal and it shows a checklist of everything that
-changed — all ticked by default:
+changed — all selected by default:
 
 ```
-Which changes do you want to save?
-  [x]  1. New:     notes.txt
-  [x]  2. Changed: main.go
-  [x]  3. Removed: old.txt
-  Type numbers to tick/untick (e.g. 1 3), 'a' all, 'n' none, Enter to confirm.
-> 2
+[?] Which changes do you want to save?
+❯ ● New:     notes.txt
+  ● Changed: main.go
+  ○ Removed: old.txt
+  ↑/↓ move · space toggle · a all · n none · enter confirm
 ```
 
-Untick anything you're not ready to save, press Enter, then describe it. Only
-the ticked files go in — the rest stay as unsaved changes for next time. Pass a
-message (`gitle save "..."`) to skip the description prompt; run it piped or in
-a script and it saves everything, as before.
+Move with the **↑/↓ arrow keys**, press **Space** to toggle a file on (`●`) or
+off (`○`), then **Enter** to save. Only the selected files go in — the rest stay
+as unsaved changes for next time.
+
+- `gitle save "message"` — skips the description prompt.
+- `gitle save --all` (or `-a`) — skips the checklist and saves everything;
+  still asks for a description if you didn't pass one.
+- Piped or scripted (no terminal) — saves everything, message required.
 
 ## Good habits, built in
 

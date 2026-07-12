@@ -6,16 +6,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var saveAll bool
+
 var saveCmd = &cobra.Command{
 	Use:   "save [\"what you changed\"]",
 	Short: "Save a snapshot of your work",
 	Long: `Records your changes as a saved point you can always come back to.
 
 In a terminal, gitle first shows a checklist of what changed so you can pick
-exactly which files to include, then asks for a description. Git calls the
-result a commit.`,
+exactly which files to include, then asks for a description. Use --all to skip
+the checklist and save everything. Git calls the result a commit.`,
 	Example: `  gitle save
-  gitle save "fixed the login bug"`,
+  gitle save "fixed the login bug"
+  gitle save --all "quick save of everything"`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: requireRepo,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -34,21 +37,28 @@ result a commit.`,
 		}
 		changes := parseChanges(lines)
 
-		// Let the user pick which files to include (all ticked by default).
-		// Without a terminal this returns everything, preserving "save all".
-		labels := make([]string, len(changes))
-		for i, c := range changes {
-			labels[i] = c.pickLabel()
-		}
-		picked := ui.Pick("Which changes do you want to save?", labels)
-		if len(picked) == 0 {
-			ui.Info("Nothing selected — nothing was saved.")
-			return nil
-		}
-
-		paths := make([]string, len(picked))
-		for i, idx := range picked {
-			paths[i] = changes[idx].path
+		var paths []string
+		if saveAll {
+			// Skip the checklist: include every change.
+			for _, c := range changes {
+				paths = append(paths, c.path)
+			}
+		} else {
+			// Let the user pick which files to include (all ticked by default).
+			// Without a terminal this returns everything, preserving "save all".
+			labels := make([]string, len(changes))
+			for i, c := range changes {
+				labels[i] = c.pickLabel()
+			}
+			picked := ui.Pick("Which changes do you want to save?", labels)
+			if len(picked) == 0 {
+				ui.Info("Nothing selected — nothing was saved.")
+				return nil
+			}
+			paths = make([]string, len(picked))
+			for i, idx := range picked {
+				paths[i] = changes[idx].path
+			}
 		}
 
 		// Ask for a description now, after picking, if none was given.
@@ -90,5 +100,6 @@ result a commit.`,
 }
 
 func init() {
+	saveCmd.Flags().BoolVarP(&saveAll, "all", "a", false, "save every change without showing the checklist")
 	rootCmd.AddCommand(saveCmd)
 }
