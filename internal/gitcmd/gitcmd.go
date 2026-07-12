@@ -87,6 +87,32 @@ func HasUpstream() bool {
 	return err == nil
 }
 
+// ConfigGet returns the value of a git config key, or "" if unset.
+func ConfigGet(key string) string {
+	out, err := Capture("config", key)
+	if err != nil {
+		return ""
+	}
+	return out
+}
+
+// ConfigSetGlobal writes a git config key at global (per-user) scope, so it
+// applies to every repo on this machine.
+func ConfigSetGlobal(key, value string) error {
+	return Run("config", "--global", key, value)
+}
+
+// HasRemote reports whether any remote is configured.
+func HasRemote() bool {
+	out, err := Capture("remote")
+	return err == nil && out != ""
+}
+
+// AddRemote adds a named remote pointing at url.
+func AddRemote(name, url string) error {
+	return Run("remote", "add", name, url)
+}
+
 // BranchExists reports whether a local branch of the given name exists.
 func BranchExists(name string) bool {
 	err := exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/"+name).Run()

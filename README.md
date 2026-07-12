@@ -9,7 +9,7 @@ existing credentials, and anything else you already use.
 
 | You type | What it does | Real git |
 | --- | --- | --- |
-| `gitle start` | Start tracking this folder (once, at the beginning) | `git init -b main` |
+| `gitle start` | Guided setup: track the folder, name yourself, add a .gitignore, first save, connect to GitHub | `git init` + config, and more |
 | `gitle save "message"` | Save a snapshot of all your work | `git add -A && git commit -m` |
 | `gitle undo` | Undo your last save, keeping your changes | `git reset --soft HEAD~1` |
 | `gitle send` | Send your saved work online | `git push` (sets upstream first time) |
@@ -19,6 +19,24 @@ existing credentials, and anything else you already use.
 | `gitle branches` | List separate lines of work | `git branch -a` |
 | `gitle switch <name>` | Switch to an existing line of work | `git checkout <name>` |
 | `gitle new-branch <name>` | Start a new line of work | `git checkout -b <name>` |
+
+## Friendly onboarding
+
+`gitle start` is a short, guided wizard that gets a brand-new folder ready:
+
+1. **Start tracking** — sets up version control (`git init`).
+2. **Who are you?** — asks your name and email so your saves are signed
+   (skips this if git already knows you). Prevents git's confusing
+   "who are you?" error on your first save.
+3. **Keep junk and secrets out** — detects your project type (Node, Python,
+   Go, Rust, Ruby) and offers a fitting `.gitignore`, always including common
+   secret files like `.env`.
+4. **First save** — offers to make your very first snapshot right away.
+5. **Connect to GitHub** — optionally links a repo so `gitle send` works.
+
+It's safe to run again — each step detects what's already done and skips it.
+When run without a terminal (piped/scripted), it uses safe defaults instead of
+prompting.
 
 ## Good habits, built in
 
