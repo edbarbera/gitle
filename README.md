@@ -39,8 +39,18 @@ One command. No Go, no setup — just needs `git` and macOS or Linux:
 curl -fsSL https://raw.githubusercontent.com/edbarbera/gitle/main/install.sh | sh
 ```
 
-Then `gitle --help`. This downloads the right prebuilt binary and puts it on
+Then `gitle --help`. This downloads the latest **stable** release, puts it on
 your PATH (`/usr/local/bin`), so the command just works.
+
+Maintainer/testing overrides (pass as env vars before the command):
+
+```sh
+# Install the newest pre-release (beta / rc) instead of stable
+curl -fsSL https://raw.githubusercontent.com/edbarbera/gitle/main/install.sh | GITLE_PRERELEASE=1 sh
+
+# Pin an exact version
+curl -fsSL https://raw.githubusercontent.com/edbarbera/gitle/main/install.sh | GITLE_VERSION=v0.2.0 sh
+```
 
 ## Install (for Go developers)
 

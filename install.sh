@@ -34,11 +34,35 @@ if ! command -v git >/dev/null 2>&1; then
   exit 1
 fi
 
-url="https://github.com/$REPO/releases/latest/download/${BIN}_${os}_${arch}"
+# --- find the release to install --------------------------------------------
+# Overrides (for maintainers/testing):
+#   GITLE_VERSION=v0.2.0   pin an exact version
+#   GITLE_PRERELEASE=1     include pre-releases (beta/rc); default is stable only
+tag="${GITLE_VERSION:-}"
+if [ -z "$tag" ]; then
+  if [ -n "${GITLE_PRERELEASE:-}" ]; then
+    # Newest release of ANY kind, including pre-releases.
+    api="https://api.github.com/repos/$REPO/releases?per_page=1"
+  else
+    # Newest STABLE release only (/latest ignores pre-releases).
+    api="https://api.github.com/repos/$REPO/releases/latest"
+  fi
+  tag="$(curl -fsSL "$api" 2>/dev/null \
+    | grep -m1 '"tag_name"' \
+    | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
+fi
+if [ -z "$tag" ]; then
+  echo "gitle: no stable release found for $REPO." >&2
+  echo "       If you're testing a beta, re-run with:  GITLE_PRERELEASE=1 sh" >&2
+  echo "       Or see https://github.com/$REPO/releases" >&2
+  exit 1
+fi
+
+url="https://github.com/$REPO/releases/download/$tag/${BIN}_${os}_${arch}"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-echo "Downloading gitle for $os/$arch..."
+echo "Downloading gitle $tag for $os/$arch..."
 if ! curl -fsSL "$url" -o "$tmp"; then
   echo "gitle: download failed. Check your connection, or see https://github.com/$REPO/releases" >&2
   exit 1
