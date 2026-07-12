@@ -12,9 +12,9 @@ existing credentials, and anything else you already use.
 | `gitle start` | Guided setup: track the folder, name yourself, add a .gitignore, first save, connect to GitHub | `git init` + config, and more |
 | `gitle save "message"` | Save a snapshot of all your work | `git add -A && git commit -m` |
 | `gitle undo` | Undo your last save, keeping your changes | `git reset --soft HEAD~1` |
-| `gitle send` | Send your saved work online | `git push` (sets upstream first time) |
+| `gitle send` | Send your saved work online (offers to create a GitHub repo if there isn't one) | `git push` (sets upstream first time) |
 | `gitle grab` | Grab everyone's latest work | `git pull --rebase` |
-| `gitle status` | Plain-English summary of where you are | `git status` |
+| `gitle status` | Colour-coded summary: new (green), changed (yellow), removed (red) | `git status` |
 | `gitle history` | See your saved points over time | `git log --oneline --graph --decorate` |
 | `gitle branches` | List separate lines of work | `git branch -a` |
 | `gitle switch <name>` | Switch to an existing line of work | `git checkout <name>` |
@@ -29,10 +29,14 @@ existing credentials, and anything else you already use.
    (skips this if git already knows you). Prevents git's confusing
    "who are you?" error on your first save.
 3. **Keep junk and secrets out** — detects your project type (Node, Python,
-   Go, Rust, Ruby) and offers a fitting `.gitignore`, always including common
-   secret files like `.env`.
+   Go, Rust, Ruby, Java, .NET, PHP, Swift, Elixir, Dart/Flutter) and offers a
+   fitting `.gitignore`, always including common secret files like `.env`.
 4. **First save** — offers to make your very first snapshot right away.
 5. **Connect to GitHub** — optionally links a repo so `gitle send` works.
+
+If you later run `gitle send` without an online home, it offers to create a
+GitHub repo for you (using the free [`gh`](https://cli.github.com) tool) and
+push in one step.
 
 It's safe to run again — each step detects what's already done and skips it.
 When run without a terminal (piped/scripted), it uses safe defaults instead of

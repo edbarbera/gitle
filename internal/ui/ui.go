@@ -62,6 +62,16 @@ func Hint(format string, a ...any) {
 // Bold returns s emphasised.
 func Bold(s string) string { return paint(bold, s) }
 
+// Green, Yellow, Red return s in the given colour (respecting NO_COLOR).
+func Green(s string) string  { return paint(green, s) }
+func Yellow(s string) string { return paint(yellow, s) }
+func Red(s string) string    { return paint(red, s) }
+
+// Plain prints a line with no prefix.
+func Plain(format string, a ...any) {
+	fmt.Printf(format+"\n", a...)
+}
+
 // IsInteractive reports whether we're attached to a real terminal, so we know
 // whether prompting the user makes sense (vs. being piped or scripted).
 func IsInteractive() bool {

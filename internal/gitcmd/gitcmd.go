@@ -52,6 +52,30 @@ func Capture(args ...string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// StatusPorcelain returns `git status --porcelain` as raw lines. Unlike
+// Capture it preserves each line's leading status characters (which are
+// significant and include spaces), trimming only the trailing newline.
+func StatusPorcelain() ([]string, error) {
+	if !Available() {
+		return nil, ErrGitMissing
+	}
+	cmd := exec.Command("git", "status", "--porcelain")
+	var out, errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		if msg := strings.TrimSpace(errBuf.String()); msg != "" {
+			return nil, errors.New(msg)
+		}
+		return nil, err
+	}
+	raw := strings.TrimRight(out.String(), "\n")
+	if raw == "" {
+		return nil, nil
+	}
+	return strings.Split(raw, "\n"), nil
+}
+
 // InRepo reports whether the current directory is inside a git working tree.
 func InRepo() bool {
 	out, err := Capture("rev-parse", "--is-inside-work-tree")
