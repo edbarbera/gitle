@@ -7,37 +7,83 @@ import (
 )
 
 var saveCmd = &cobra.Command{
-	Use:     "save \"what you changed\"",
-	Short:   "Save a snapshot of your work",
-	Long:    "Records all your current changes as a saved point you can always come back to.\nGit calls this a commit.",
-	Example: `  gitle save "fixed the login bug"`,
+	Use:   "save [\"what you changed\"]",
+	Short: "Save a snapshot of your work",
+	Long: `Records your changes as a saved point you can always come back to.
+
+In a terminal, gitle first shows a checklist of what changed so you can pick
+exactly which files to include, then asks for a description. Git calls the
+result a commit.`,
+	Example: `  gitle save
+  gitle save "fixed the login bug"`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: requireRepo,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 || args[0] == "" {
-			ui.Error("Please describe what you changed.")
-			ui.Hint("Example: %s", ui.Bold(`gitle save "fixed the login bug"`))
-			return errSilent
+		message := ""
+		if len(args) == 1 {
+			message = args[0]
 		}
-		message := args[0]
 
-		if !gitcmd.HasChanges() {
+		lines, err := gitcmd.StatusPorcelain()
+		if err != nil {
+			return err
+		}
+		if len(lines) == 0 {
 			ui.Info("Nothing to save — your work is already up to date.")
 			return nil
 		}
+		changes := parseChanges(lines)
 
-		if err := gitcmd.Run("add", "-A"); err != nil {
+		// Let the user pick which files to include (all ticked by default).
+		// Without a terminal this returns everything, preserving "save all".
+		labels := make([]string, len(changes))
+		for i, c := range changes {
+			labels[i] = c.pickLabel()
+		}
+		picked := ui.Pick("Which changes do you want to save?", labels)
+		if len(picked) == 0 {
+			ui.Info("Nothing selected — nothing was saved.")
+			return nil
+		}
+
+		paths := make([]string, len(picked))
+		for i, idx := range picked {
+			paths[i] = changes[idx].path
+		}
+
+		// Ask for a description now, after picking, if none was given.
+		if message == "" {
+			if !ui.IsInteractive() {
+				ui.Error("Please describe what you changed.")
+				ui.Hint("Example: %s", ui.Bold(`gitle save "fixed the login bug"`))
+				return errSilent
+			}
+			message = ui.Ask("Describe what you changed:", "")
+			if message == "" {
+				ui.Error("A short description is needed to save.")
+				return errSilent
+			}
+		}
+
+		// Stage exactly the picked paths (covers new, changed and removed),
+		// then commit only those paths so nothing unpicked sneaks in.
+		addArgs := append([]string{"add", "-A", "--"}, paths...)
+		if err := gitcmd.Run(addArgs...); err != nil {
 			return err
 		}
-		if err := gitcmd.Run("commit", "-m", message); err != nil {
+		commitArgs := append([]string{"commit", "-m", message, "--"}, paths...)
+		if err := gitcmd.Run(commitArgs...); err != nil {
 			return err
 		}
 
-		ui.Success("Saved: %q", message)
-		if !gitcmd.HasUpstream() {
-			ui.Hint("Share it online with %s once you're ready.", ui.Bold("gitle send"))
-		} else {
+		ui.Success("Saved %d file(s): %q", len(paths), message)
+		if gitcmd.HasChanges() {
+			ui.Hint("Some changes were left unsaved — run %s again when ready.", ui.Bold("gitle save"))
+		}
+		if gitcmd.HasUpstream() {
 			ui.Hint("Send it online with %s.", ui.Bold("gitle send"))
+		} else {
+			ui.Hint("Share it online with %s once you're ready.", ui.Bold("gitle send"))
 		}
 		return nil
 	},

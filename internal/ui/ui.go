@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -132,6 +133,73 @@ func Ask(question, def string) string {
 		return line
 	}
 	return def
+}
+
+// Pick shows a checklist (all ticked by default) and lets the user toggle
+// items until they confirm, returning the indices they kept. With no terminal
+// it selects everything, preserving the "save all" default for scripts.
+func Pick(prompt string, items []string) []int {
+	if !IsInteractive() {
+		all := make([]int, len(items))
+		for i := range all {
+			all[i] = i
+		}
+		return all
+	}
+
+	selected := make([]bool, len(items))
+	for i := range selected {
+		selected[i] = true
+	}
+
+	for {
+		fmt.Println("\n" + paint(bold, prompt))
+		for i, it := range items {
+			box := "[ ]"
+			if selected[i] {
+				box = paint(green, "[x]")
+			}
+			fmt.Printf("  %s %2d. %s\n", box, i+1, it)
+		}
+		fmt.Println(paint(dim, "  Type numbers to tick/untick (e.g. 1 3), 'a' all, 'n' none, Enter to confirm."))
+		fmt.Print(paint(yellow, "> "))
+
+		line, err := stdin.ReadString('\n')
+		if err != nil {
+			break
+		}
+		switch cmd := strings.TrimSpace(strings.ToLower(line)); cmd {
+		case "": // confirm current selection
+			return trueIndices(selected)
+		case "a", "all":
+			setAll(selected, true)
+		case "n", "none":
+			setAll(selected, false)
+		default:
+			for _, tok := range strings.FieldsFunc(cmd, func(r rune) bool { return r == ' ' || r == ',' }) {
+				if n, e := strconv.Atoi(tok); e == nil && n >= 1 && n <= len(items) {
+					selected[n-1] = !selected[n-1]
+				}
+			}
+		}
+	}
+	return trueIndices(selected)
+}
+
+func setAll(b []bool, v bool) {
+	for i := range b {
+		b[i] = v
+	}
+}
+
+func trueIndices(b []bool) []int {
+	var out []int
+	for i, v := range b {
+		if v {
+			out = append(out, i)
+		}
+	}
+	return out
 }
 
 // Banner prints the playful gitle welcome art.

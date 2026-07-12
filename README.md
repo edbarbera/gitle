@@ -10,7 +10,7 @@ existing credentials, and anything else you already use.
 | You type | What it does | Real git |
 | --- | --- | --- |
 | `gitle start` | Guided setup: track the folder, name yourself, add a .gitignore, first save, connect to GitHub | `git init` + config, and more |
-| `gitle save "message"` | Save a snapshot of all your work | `git add -A && git commit -m` |
+| `gitle save ["message"]` | Pick which changed files to include (checklist), then save a snapshot | `git add` (chosen files) `&& git commit` |
 | `gitle undo` | Undo your last save, keeping your changes | `git reset --soft HEAD~1` |
 | `gitle send` | Send your saved work online (offers to create a GitHub repo if there isn't one) | `git push` (sets upstream first time) |
 | `gitle grab` | Grab everyone's latest work | `git pull --rebase` |
@@ -41,6 +41,25 @@ push in one step.
 It's safe to run again — each step detects what's already done and skips it.
 When run without a terminal (piped/scripted), it uses safe defaults instead of
 prompting.
+
+## Picking what to save
+
+Run `gitle save` in a terminal and it shows a checklist of everything that
+changed — all ticked by default:
+
+```
+Which changes do you want to save?
+  [x]  1. New:     notes.txt
+  [x]  2. Changed: main.go
+  [x]  3. Removed: old.txt
+  Type numbers to tick/untick (e.g. 1 3), 'a' all, 'n' none, Enter to confirm.
+> 2
+```
+
+Untick anything you're not ready to save, press Enter, then describe it. Only
+the ticked files go in — the rest stay as unsaved changes for next time. Pass a
+message (`gitle save "..."`) to skip the description prompt; run it piped or in
+a script and it saves everything, as before.
 
 ## Good habits, built in
 

@@ -46,20 +46,14 @@ var statusCmd = &cobra.Command{
 // printChanges groups porcelain output into friendly, colour-coded buckets.
 func printChanges(lines []string) {
 	var added, changed, removed []string
-	for _, line := range lines {
-		if len(line) < 4 {
-			continue
-		}
-		x, y, path := line[0], line[1], strings.TrimSpace(line[3:])
-		switch {
-		case x == '?': // untracked
-			added = append(added, path)
-		case x == 'D' || y == 'D': // deleted
-			removed = append(removed, path)
-		case x == 'A' || y == 'A': // newly added
-			added = append(added, path)
-		default: // modified, renamed, copied, etc.
-			changed = append(changed, path)
+	for _, c := range parseChanges(lines) {
+		switch c.label {
+		case "New":
+			added = append(added, c.path)
+		case "Removed":
+			removed = append(removed, c.path)
+		default:
+			changed = append(changed, c.path)
 		}
 	}
 
