@@ -31,22 +31,44 @@ existing credentials, and anything else you already use.
 - **`send` sets up the online link** for you on the first push.
 - Friendly errors point you at the next step instead of showing raw git output.
 
-## Build it
+## Install (for everyone)
 
-Requires [Go](https://go.dev/dl/) 1.22+ and `git` on your machine.
+One command. No Go, no setup — just needs `git` and macOS or Linux:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/edbarbera/gitle/main/install.sh | sh
+```
+
+Then `gitle --help`. This downloads the right prebuilt binary and puts it on
+your PATH (`/usr/local/bin`), so the command just works.
+
+## Install (for Go developers)
+
+```sh
+go install github.com/edbarbera/gitle@latest
+```
+
+Note: this needs `~/go/bin` (see `go env GOPATH`) on your `PATH`.
+
+## Build from source
+
+Requires [Go](https://go.dev/dl/) 1.22+ and `git`.
 
 ```sh
 go build -o gitle .
 ./gitle --help
 ```
 
-## Install for a friend
+## Releasing (maintainer)
 
-Once this is pushed to GitHub, anyone with Go can install it with one line:
+Binaries are built automatically by [GoReleaser](https://goreleaser.com) via
+GitHub Actions. To publish a new version:
 
 ```sh
-go install github.com/edbarbera/gitle@latest
+git tag v0.1.0
+git push --tags
 ```
 
-That puts a `gitle` command on their machine. (You can also send them the
-compiled binary directly — it's a single file.)
+The workflow in `.github/workflows/release.yml` cross-compiles for macOS and
+Linux (amd64 + arm64) and attaches the binaries to the GitHub Release, which is
+what `install.sh` downloads.

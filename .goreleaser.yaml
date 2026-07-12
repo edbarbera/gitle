@@ -1,0 +1,33 @@
+# GoReleaser cross-compiles gitle and attaches the binaries to each GitHub
+# Release, so install.sh can download them. https://goreleaser.com
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    # Keep the binary named "gitle" inside each archive.
+    binary: gitle
+
+archives:
+  # Upload raw binaries (not tarballs) named gitle_<os>_<arch>, so the URL
+  # https://github.com/edbarbera/gitle/releases/latest/download/gitle_darwin_arm64
+  # resolves directly. This is what install.sh fetches.
+  - formats: [binary]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  # Mark pre-1.0 tags like v0.1.0-beta as pre-releases automatically.
+  prerelease: auto
