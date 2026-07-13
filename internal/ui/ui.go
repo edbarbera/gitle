@@ -258,11 +258,12 @@ func trueIndices(b []bool) []int {
 // Banner prints the playful gitle welcome art.
 func Banner() {
 	art := "" +
-		"   __ _(_) |_| | ___\n" +
-		"  / _` | | __| |/ _ \\\n" +
-		" | (_| | | |_| |  __/\n" +
-		"  \\__, |_|\\__|_|\\___|\n" +
-		"  |___/"
+		"       _ _   _\n" +
+		"  __ _(_) |_| | ___\n" +
+		" / _` | | __| |/ _ \\\n" +
+		"| (_| | | |_| |  __/\n" +
+		" \\__, |_|\\__|_|\\___|\n" +
+		" |___/"
 	fmt.Println(paint(cyan, art))
 	fmt.Println(paint(bold, "  git, made friendly") + " ✨")
 	fmt.Println()
