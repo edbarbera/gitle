@@ -48,6 +48,7 @@ func renderHelp() {
 		fmt.Println()
 	}
 	fmt.Println(ui.Dim("Run 'gitle <command> --help' for more on any command."))
+	fmt.Println(ui.Dim("Check your version with 'gitle --version'."))
 }
 
 func init() {

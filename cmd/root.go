@@ -33,7 +33,10 @@ memorising git.`,
 }
 
 // Execute runs the CLI and translates any error into a friendly message.
-func Execute() {
+// version is the resolved release version, shown by `gitle --version`.
+func Execute(version string) {
+	rootCmd.Version = version
+	rootCmd.SetVersionTemplate("gitle {{.Version}}\n")
 	if err := rootCmd.Execute(); err != nil {
 		if err == errSilent {
 			os.Exit(1)

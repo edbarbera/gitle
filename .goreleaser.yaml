@@ -17,6 +17,9 @@ builds:
       - arm64
     # Keep the binary named "gitle" inside each archive.
     binary: gitle
+    # Embed the release tag so `gitle --version` reports it.
+    ldflags:
+      - -s -w -X main.version=v{{ .Version }}
 
 archives:
   # Upload raw binaries (not tarballs) named gitle_<os>_<arch>, so the URL

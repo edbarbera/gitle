@@ -153,14 +153,31 @@ go build -o gitle .
 ./gitle --help
 ```
 
+## Version
+
+```sh
+gitle --version
+```
+
+Released binaries report their Git tag (e.g. `gitle v0.2.0`) — the tag is
+embedded at build time by GoReleaser, and `go install`ed copies read it from
+Go's build info. Local `go build`s show a `-dirty` development version.
+
 ## Releasing (maintainer)
 
 Binaries are built automatically by [GoReleaser](https://goreleaser.com) via
-GitHub Actions. To publish a new version:
+GitHub Actions whenever a `v*` tag is pushed. Instead of tagging by hand, use
+the release script — it bumps the version, checks you're on a clean `main`,
+tags, and pushes (which kicks off the build):
 
 ```sh
-git tag v0.1.0
-git push --tags
+scripts/release.sh patch     # v0.2.3 -> v0.2.4
+scripts/release.sh minor     # v0.2.3 -> v0.3.0
+scripts/release.sh major     # v0.2.3 -> v1.0.0
+scripts/release.sh v0.5.0    # or an explicit version
+
+# or via make
+make release BUMP=patch
 ```
 
 The workflow in `.github/workflows/release.yml` cross-compiles for macOS and
