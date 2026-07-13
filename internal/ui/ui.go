@@ -64,10 +64,12 @@ func Hint(format string, a ...any) {
 // Bold returns s emphasised.
 func Bold(s string) string { return paint(bold, s) }
 
-// Green, Yellow, Red return s in the given colour (respecting NO_COLOR).
+// Green, Yellow, Red, Cyan, Dim return s in the given style (respecting NO_COLOR).
 func Green(s string) string  { return paint(green, s) }
 func Yellow(s string) string { return paint(yellow, s) }
 func Red(s string) string    { return paint(red, s) }
+func Cyan(s string) string   { return paint(cyan, s) }
+func Dim(s string) string    { return paint(dim, s) }
 
 // Plain prints a line with no prefix.
 func Plain(format string, a ...any) {

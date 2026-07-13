@@ -61,6 +61,12 @@ the checklist and save everything. Git calls the result a commit.`,
 			}
 		}
 
+		// Safety rail: flag secrets / oversized files before they're committed.
+		if !reviewRisks(paths) {
+			ui.Info("Nothing was saved.")
+			return nil
+		}
+
 		// Ask for a description now, after picking, if none was given.
 		if message == "" {
 			if !ui.IsInteractive() {

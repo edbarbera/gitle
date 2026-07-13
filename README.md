@@ -11,10 +11,11 @@ existing credentials, and anything else you already use.
 | --- | --- | --- |
 | `gitle start` | Guided setup: track the folder, name yourself, add a .gitignore, first save, connect to GitHub | `git init` + config, and more |
 | `gitle save ["message"]` | Arrow-key checklist to pick which files to include, then save a snapshot (`--all` saves everything) | `git add` (chosen files) `&& git commit` |
-| `gitle undo` | Undo your last save, keeping your changes | `git reset --soft HEAD~1` |
+| `gitle undo` | Undo your last save, keeping your changes (`--hard` discards uncommitted changes) | `git reset --soft HEAD~1` |
 | `gitle send` | Send your saved work online (offers to create a GitHub repo if there isn't one) | `git push` (sets upstream first time) |
 | `gitle grab` | Grab everyone's latest work | `git pull --rebase` |
-| `gitle status` | Colour-coded summary: new (green), changed (yellow), removed (red) | `git status` |
+| `gitle status` | Friendly summary: project, branch, ahead/behind main, colour-coded changes, online sync | `git status` + more |
+| `gitle help` | Aesthetic overview of all commands, grouped by task | — |
 | `gitle history` | See your saved points over time | `git log --oneline --graph --decorate` |
 | `gitle branches` | List separate lines of work | `git branch -a` |
 | `gitle switch <name>` | Switch to an existing line of work | `git checkout <name>` |
@@ -63,6 +64,45 @@ as unsaved changes for next time.
 - `gitle save --all` (or `-a`) — skips the checklist and saves everything;
   still asks for a description if you didn't pass one.
 - Piped or scripted (no terminal) — saves everything, message required.
+
+## Knowing where you are
+
+`gitle status` gives a friendly, colour-coded snapshot:
+
+```
+📦 myproject
+   on branch feature-login
+   compared to main: 2 ahead
+
+! You have unsaved changes:
+  New:     notes.txt
+  Changed: main.go
+  Save these with gitle save "...".
+✓ Up to date with online.
+```
+
+It shows your project name, which line of work you're on, how far ahead/behind
+`main` you are, exactly what's changed, and whether you're in sync with the
+online copy. (The online line reflects your last `gitle grab` — status stays
+fast and doesn't reach over the network.)
+
+## Safety rails
+
+gitle steps in with a plain-English warning before anything risky:
+
+- **Secrets** — `gitle save` spots files that look like passwords or keys
+  (`.env`, `*.pem`, `id_rsa`, `credentials.json`, …) and asks before saving
+  them, so you don't leak credentials.
+- **Big files** — `gitle save` flags files over 10 MB that would bloat your
+  project, and asks before including them.
+- **Pushing to main** — `gitle send` warns when you're sending straight to a
+  shared branch like `main`/`master` and suggests making a branch first.
+- **Someone else pushed first** — if `gitle send` is rejected because there's
+  newer work online, gitle explains it and tells you to `gitle grab` first
+  (instead of a wall of git errors).
+- **Throwing away work** — `gitle undo --hard` lists exactly which files it
+  will discard, warns that it can't be undone, and refuses to run without a
+  confirmation.
 
 ## Good habits, built in
 

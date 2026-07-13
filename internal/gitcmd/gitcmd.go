@@ -7,6 +7,8 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -104,6 +106,22 @@ func HasCommits() bool {
 	return err == nil
 }
 
+// RunCaptureStderr runs git streaming stdout to the terminal (and keeping the
+// user's stdin/tty for auth prompts), while capturing stderr so the caller can
+// translate git's error into plain English. Returns the captured stderr.
+func RunCaptureStderr(args ...string) (string, error) {
+	if !Available() {
+		return "", ErrGitMissing
+	}
+	cmd := exec.Command("git", args...)
+	var errBuf bytes.Buffer
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = &errBuf
+	cmd.Stdin = os.Stdin
+	err := cmd.Run()
+	return errBuf.String(), err
+}
+
 // HasUpstream reports whether the current branch has a configured upstream to
 // push/pull against.
 func HasUpstream() bool {
@@ -141,4 +159,42 @@ func AddRemote(name, url string) error {
 func BranchExists(name string) bool {
 	err := exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/"+name).Run()
 	return err == nil
+}
+
+// RepoName returns the name of the repository's top-level folder.
+func RepoName() string {
+	top, err := Capture("rev-parse", "--show-toplevel")
+	if err != nil {
+		return ""
+	}
+	return filepath.Base(top)
+}
+
+// MainBranch returns the name of the project's main line of work ("main" or
+// "master"), or "" if neither exists.
+func MainBranch() string {
+	switch {
+	case BranchExists("main"):
+		return "main"
+	case BranchExists("master"):
+		return "master"
+	default:
+		return ""
+	}
+}
+
+// AheadBehind counts how far HEAD is ahead of and behind the given ref (e.g.
+// "main" or "@{upstream}"). ok is false if the comparison can't be made.
+func AheadBehind(ref string) (ahead, behind int, ok bool) {
+	out, err := Capture("rev-list", "--left-right", "--count", ref+"...HEAD")
+	if err != nil {
+		return 0, 0, false
+	}
+	parts := strings.Fields(out) // "<behind>\t<ahead>"
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	behind, _ = strconv.Atoi(parts[0])
+	ahead, _ = strconv.Atoi(parts[1])
+	return ahead, behind, true
 }

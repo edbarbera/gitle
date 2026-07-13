@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/edbarbera/gitle/internal/gitcmd"
 	"github.com/edbarbera/gitle/internal/ui"
@@ -27,22 +28,68 @@ var sendCmd = &cobra.Command{
 		}
 
 		branch := gitcmd.CurrentBranch()
+
+		// Rail: pushing straight to a shared branch like main is worth pausing on.
+		if protectedBranches[branch] {
+			ui.Warn("You're sending straight to '%s'.", branch)
+			ui.Hint("On shared projects it's safer to make a branch first (%s) and send that.",
+				ui.Bold("gitle new-branch <name>"))
+			if ui.IsInteractive() && !ui.ConfirmDefault("Send to "+branch+" anyway?", false) {
+				ui.Info("Held off. Start a branch with %s.", ui.Bold("gitle new-branch <name>"))
+				return errSilent
+			}
+		}
+
 		ui.Info("Sending your work online...")
 
+		var stderr string
 		var err error
 		if gitcmd.HasUpstream() {
-			err = gitcmd.Run("push")
+			stderr, err = gitcmd.RunCaptureStderr("push")
 		} else {
 			// First push on this branch: remember the destination for next time.
-			err = gitcmd.Run("push", "-u", "origin", branch)
+			stderr, err = gitcmd.RunCaptureStderr("push", "-u", "origin", branch)
 		}
 		if err != nil {
-			return err
+			return explainPushError(stderr)
 		}
 
 		ui.Success("Sent everything online.")
 		return nil
 	},
+}
+
+// explainPushError turns git's push failure into a plain-English message and
+// the right next step — most importantly, "someone else sent work first".
+func explainPushError(stderr string) error {
+	low := strings.ToLower(stderr)
+	switch {
+	case strings.Contains(low, "rejected"),
+		strings.Contains(low, "non-fast-forward"),
+		strings.Contains(low, "fetch first"):
+		ui.Error("Couldn't send — there's newer work online you don't have yet.")
+		ui.Hint("Grab it first with %s, then send again.", ui.Bold("gitle grab"))
+	case strings.Contains(low, "authentication"),
+		strings.Contains(low, "could not read"),
+		strings.Contains(low, "permission denied"),
+		strings.Contains(low, "access denied"):
+		ui.Error("Couldn't send — GitHub needs you to sign in.")
+		ui.Hint("If you use the gh tool, run %s once, then try again.", ui.Bold("gh auth login"))
+	default:
+		ui.Error("Couldn't send your work.")
+		if msg := firstLine(stderr); msg != "" {
+			ui.Hint("git said: %s", msg)
+		}
+	}
+	return errSilent
+}
+
+func firstLine(s string) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return strings.TrimSpace(s[:i])
+	}
+	return s
 }
 
 // offerCreateRepo handles the "no online home yet" case. If GitHub's `gh` tool
