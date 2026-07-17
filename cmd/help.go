@@ -34,6 +34,7 @@ var helpGroups = []helpGroup{
 	}},
 	{"Fixing mistakes", []helpEntry{
 		{"undo", "Undo your last save  (--hard discards changes)"},
+		{"fix-conflicts", "Walk through conflicts step by step"},
 	}},
 }
 
@@ -43,7 +44,7 @@ func renderHelp() {
 	for _, g := range helpGroups {
 		fmt.Println(ui.Bold(g.title))
 		for _, e := range g.entries {
-			fmt.Printf("  %s  %s\n", ui.Cyan(fmt.Sprintf("%-11s", e.name)), ui.Dim(e.desc))
+			fmt.Printf("  %s  %s\n", ui.Cyan(fmt.Sprintf("%-14s", e.name)), ui.Dim(e.desc))
 		}
 		fmt.Println()
 	}

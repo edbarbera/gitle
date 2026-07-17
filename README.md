@@ -56,6 +56,7 @@ That's it. 🎉
 | `gitle switch <name>` | Switch to another line of work |
 | `gitle new-branch <name>` | Start a new line of work |
 | `gitle undo` | Undo your last save (safely) |
+| `gitle fix-conflicts` | Walk through conflicts step by step |
 | `gitle help` | See everything, grouped and explained |
 
 Run `gitle help` any time for the full, friendly list.
@@ -91,6 +92,7 @@ gitle warns you — in plain English — before anything risky:
 - 📦 **Big files** — flags oversized files that would bloat your project
 - 🌿 **Pushing to main** — nudges you to make a branch on shared projects
 - 🔄 **Out of sync** — tells you to `gitle grab` when others pushed first
+- 🧩 **Conflicts** — `gitle fix-conflicts` walks you through clashes file by file, no raw markers needed
 - ⚠️ **Throwing away work** — always confirms before discarding changes
 
 ## 🔢 Version

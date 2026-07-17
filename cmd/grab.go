@@ -24,9 +24,8 @@ var grabCmd = &cobra.Command{
 		ui.Info("Grabbing the latest work from online...")
 		// --rebase replays your saves on top of the latest, keeping history tidy.
 		if err := gitcmd.Run("pull", "--rebase"); err != nil {
-			ui.Warn("Some changes clashed and need a person to sort out.")
-			ui.Hint("This is normal on shared projects. Ask a teammate to help merge,")
-			ui.Hint("or undo the attempt with %s.", ui.Bold("git rebase --abort"))
+			ui.Warn("Some changes clashed with yours — that's normal on shared projects.")
+			ui.Hint("Walk through them with %s.", ui.Bold("gitle fix-conflicts"))
 			return errSilent
 		}
 

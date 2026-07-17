@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"golang.org/x/term"
@@ -229,6 +230,91 @@ func Pick(prompt string, items []string) []int {
 		draw(false)
 	}
 	return trueIndices(selected)
+}
+
+// Choose shows an arrow-key menu where exactly one item can be picked. Move
+// the highlight with ↑/↓ (or j/k), press Enter to confirm. Returns the chosen
+// index, or -1 if there's no terminal to ask on or the user cancels (Ctrl-C).
+func Choose(prompt string, items []string) int {
+	if len(items) == 0 || !IsInteractive() {
+		return -1
+	}
+	fd := int(os.Stdin.Fd())
+	old, err := term.MakeRaw(fd)
+	if err != nil {
+		return -1
+	}
+	defer term.Restore(fd, old)
+
+	cursor := 0
+	draw := func(first bool) {
+		if !first {
+			fmt.Fprintf(os.Stdout, "\033[%dA", len(items)+1) // jump back to top
+		}
+		fmt.Fprintf(os.Stdout, "\r\033[K%s\r\n", paint(bold, "[?] "+prompt))
+		for i, it := range items {
+			pointer := "  "
+			if i == cursor {
+				pointer = paint(cyan, "❯ ")
+			}
+			fmt.Fprintf(os.Stdout, "\r\033[K%s%s\r\n", pointer, it)
+		}
+	}
+
+	draw(true)
+	for {
+		b, err := stdin.ReadByte()
+		if err != nil {
+			return -1
+		}
+		switch b {
+		case 3: // Ctrl-C
+			return -1
+		case '\r', '\n':
+			return cursor
+		case 'k':
+			if cursor > 0 {
+				cursor--
+			}
+		case 'j':
+			if cursor < len(items)-1 {
+				cursor++
+			}
+		case 0x1b: // escape sequence — arrow keys arrive as ESC [ A/B
+			if b2, _ := stdin.ReadByte(); b2 == '[' {
+				switch b3, _ := stdin.ReadByte(); b3 {
+				case 'A':
+					if cursor > 0 {
+						cursor--
+					}
+				case 'B':
+					if cursor < len(items)-1 {
+						cursor++
+					}
+				}
+			}
+		}
+		draw(false)
+	}
+}
+
+// OpenEditor opens path in the user's configured editor ($GIT_EDITOR or
+// $EDITOR, falling back to vi) and waits for it to close.
+func OpenEditor(path string) error {
+	editor := os.Getenv("GIT_EDITOR")
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "vi"
+	}
+	// Run through a shell so editors configured with arguments (e.g. "code
+	// --wait") work, while still passing path safely as a single argument.
+	cmd := exec.Command("sh", "-c", editor+` "$1"`, "sh", path)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func allIndices(n int) []int {
