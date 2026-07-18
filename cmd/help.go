@@ -21,7 +21,7 @@ var helpGroups = []helpGroup{
 		{"start", "Set up this folder, guided step by step"},
 	}},
 	{"Everyday", []helpEntry{
-		{"save", "Save a snapshot of your work"},
+		{"save", "Save a snapshot of your work  (--ai drafts the description)"},
 		{"send", "Send your saved work online"},
 		{"grab", "Grab everyone's latest work"},
 		{"status", "See what's going on right now"},

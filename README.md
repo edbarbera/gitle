@@ -17,6 +17,7 @@ Plain-English version control for people who don't know git.
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-2ea44f)
 ![Made with Go](https://img.shields.io/badge/made%20with-Go-2ea44f)
 ![Wraps git](https://img.shields.io/badge/wraps-git-2ea44f)
+![AI-assisted](https://img.shields.io/badge/AI--assisted-opt--in%20%26%20free-2ea44f)
 
 </div>
 
@@ -25,6 +26,9 @@ Plain-English version control for people who don't know git.
 **gitle** wraps the `git` you already have and gives everyday tasks names that
 make sense — `save`, `send`, `grab` — while keeping you on good habits
 automatically. No jargon, no memorising commands, no fear of breaking things.
+Stuck for words when saving? `gitle save --ai` has a free AI model draft the
+description for you, straight from your diff — opt-in, bring your own free
+key, nothing sent anywhere unless you ask for it.
 
 ## 📦 Install
 
@@ -48,6 +52,7 @@ That's it. 🎉
 | --- | --- |
 | `gitle start` | Guided setup for a new project |
 | `gitle save "message"` | Save a snapshot of your work |
+| `gitle save --ai` | Same, but a free AI model drafts the description |
 | `gitle send` | Send your work online |
 | `gitle grab` | Grab everyone's latest work |
 | `gitle status` | See where you are right now |
@@ -93,6 +98,7 @@ gitle warns you — in plain English — before anything risky:
 - 🌿 **Pushing to main** — nudges you to make a branch on shared projects
 - 🔄 **Out of sync** — tells you to `gitle grab` when others pushed first
 - 🧩 **Conflicts** — `gitle fix-conflicts` walks you through clashes file by file, no raw markers needed
+- 🤖 **AI descriptions (opt-in)** — `gitle save --ai` drafts your description from the diff using your own free [OpenRouter](https://openrouter.ai) key; nothing is sent anywhere unless you pass `--ai`, and you can always edit or replace the suggestion
 - ⚠️ **Throwing away work** — always confirms before discarding changes
 
 ## 🔢 Version

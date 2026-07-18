@@ -3,3 +3,6 @@
 
 # OS cruft
 .DS_Store
+
+# Local planning notes
+/translation-plan.md

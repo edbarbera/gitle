@@ -93,6 +93,11 @@ func CurrentBranch() string {
 	return out
 }
 
+// DiffCached returns the diff of everything currently staged.
+func DiffCached() (string, error) {
+	return Capture("diff", "--cached")
+}
+
 // HasStagedOrUnstagedChanges reports whether the working tree has any changes
 // (staged, unstaged, or untracked) that a commit could capture.
 func HasChanges() bool {
