@@ -17,9 +17,14 @@ builds:
       - arm64
     # Keep the binary named "gitle" inside each archive.
     binary: gitle
-    # Embed the release tag so `gitle --version` reports it.
+    # Embed the release tag so `gitle --version` reports it, and the
+    # Grafana Cloud auth header so release builds ship with telemetry
+    # enabled. GITLE_OTLP_AUTH_HEADER comes from the release workflow's
+    # secrets; it's empty for local `goreleaser build`, which just disables
+    # telemetry. The header value ("Basic <token>") contains a space, so it
+    # must be quoted — ldflags is whitespace-split like a shell string.
     ldflags:
-      - -s -w -X main.version=v{{ .Version }}
+      - -s -w -X main.version=v{{ .Version }} -X "main.otlpAuthHeader={{ .Env.GITLE_OTLP_AUTH_HEADER }}"
 
 archives:
   # Upload raw binaries (not tarballs) named gitle_<os>_<arch>, so the URL
