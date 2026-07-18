@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/edbarbera/gitle/internal/gitcmd"
+	"github.com/edbarbera/gitle/internal/ops"
 	"github.com/edbarbera/gitle/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +23,6 @@ var sendCmd = &cobra.Command{
 			ui.Info("Nothing to send yet — save some work first with %s.", ui.Bold(`gitle save "..."`))
 			return nil
 		}
-
 		if !gitcmd.HasRemote() {
 			return offerCreateRepo()
 		}
@@ -30,66 +30,60 @@ var sendCmd = &cobra.Command{
 		branch := gitcmd.CurrentBranch()
 
 		// Rail: pushing straight to a shared branch like main is worth pausing on.
-		if protectedBranches[branch] {
+		if ops.ProtectedBranches[branch] {
 			ui.Warn("You're sending straight to '%s'.", branch)
 			ui.Hint("On shared projects it's safer to make a branch first (%s) and send that.",
 				ui.Bold("gitle new-branch <name>"))
-			if ui.IsInteractive() && !ui.ConfirmDefault("Send to "+branch+" anyway?", false) {
+			if ui.Interactive() && !ui.ConfirmDefault("Send to "+branch+" anyway?", false) {
 				ui.Info("Held off. Start a branch with %s.", ui.Bold("gitle new-branch <name>"))
 				return errSilent
 			}
 		}
 
-		ui.Info("Sending your work online...")
+		// The spinner draws over the terminal, so git must not try to prompt
+		// for credentials underneath it. Without a spinner (piped, scripted)
+		// git is free to ask as it always has.
+		opts := ops.SendOptions{AllowTerminalPrompt: !ui.Interactive()}
 
-		var stderr string
-		var err error
-		if gitcmd.HasUpstream() {
-			stderr, err = gitcmd.RunCaptureStderr("push")
-		} else {
-			// First push on this branch: remember the destination for next time.
-			stderr, err = gitcmd.RunCaptureStderr("push", "-u", "origin", branch)
-		}
+		var result ops.SendResult
+		err := ui.Spinner("Sending your work online...", func() error {
+			var err error
+			result, err = ops.Send(opts)
+			return err
+		})
 		if err != nil {
-			return explainPushError(stderr)
+			return explainSendError(err)
 		}
 
 		ui.Success("Sent everything online.")
+		if result.FirstPush {
+			ui.Hint("'%s' now has an online home — future sends go there automatically.", result.Branch)
+		}
 		return nil
 	},
 }
 
-// explainPushError turns git's push failure into a plain-English message and
-// the right next step — most importantly, "someone else sent work first".
-func explainPushError(stderr string) error {
-	low := strings.ToLower(stderr)
-	switch {
-	case strings.Contains(low, "rejected"),
-		strings.Contains(low, "non-fast-forward"),
-		strings.Contains(low, "fetch first"):
+// explainSendError turns a classified send failure into plain English and the
+// right next step — most importantly, "someone else sent work first".
+func explainSendError(err error) error {
+	var sendErr *ops.SendError
+	if !errors.As(err, &sendErr) {
+		return err
+	}
+	switch sendErr.Problem {
+	case ops.SendRejected:
 		ui.Error("Couldn't send — there's newer work online you don't have yet.")
 		ui.Hint("Grab it first with %s, then send again.", ui.Bold("gitle grab"))
-	case strings.Contains(low, "authentication"),
-		strings.Contains(low, "could not read"),
-		strings.Contains(low, "permission denied"),
-		strings.Contains(low, "access denied"):
+	case ops.SendAuth:
 		ui.Error("Couldn't send — GitHub needs you to sign in.")
 		ui.Hint("If you use the gh tool, run %s once, then try again.", ui.Bold("gh auth login"))
 	default:
 		ui.Error("Couldn't send your work.")
-		if msg := firstLine(stderr); msg != "" {
-			ui.Hint("git said: %s", msg)
+		if sendErr.Detail != "" {
+			ui.Hint("git said: %s", sendErr.Detail)
 		}
 	}
 	return errSilent
-}
-
-func firstLine(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return strings.TrimSpace(s[:i])
-	}
-	return s
 }
 
 // offerCreateRepo handles the "no online home yet" case. If GitHub's `gh` tool
@@ -105,7 +99,7 @@ func offerCreateRepo() error {
 		return errSilent
 	}
 
-	if !ui.IsInteractive() {
+	if !ui.Interactive() {
 		ui.Hint("Create one with %s, or connect an existing repo with %s.",
 			ui.Bold("gh repo create"), ui.Bold("git remote add origin <link>"))
 		return errSilent
@@ -117,6 +111,10 @@ func offerCreateRepo() error {
 	}
 
 	name := ui.Ask("What should it be called?", currentDirName())
+	if name == "" {
+		ui.Info("No name given — nothing was created.")
+		return errSilent
+	}
 	visibility := "--private"
 	if !ui.ConfirmDefault("Keep it private?", true) {
 		visibility = "--public"

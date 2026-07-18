@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/edbarbera/gitle/internal/gitcmd"
+	"github.com/edbarbera/gitle/internal/ops"
 	"github.com/edbarbera/gitle/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -16,60 +16,59 @@ var statusCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	PreRunE: requireRepo,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		branch := gitcmd.CurrentBranch()
-		hasCommits := gitcmd.HasCommits()
-
-		// --- Header: project + branch + position vs main ---
-		if name := gitcmd.RepoName(); name != "" {
-			fmt.Printf("📦 %s\n", ui.Bold(name))
-		}
-		if branch != "" {
-			fmt.Printf("   %s %s\n", ui.Dim("on branch"), ui.Cyan(branch))
-		}
-		if hasCommits && branch != "" {
-			if mainB := gitcmd.MainBranch(); mainB != "" && branch != mainB {
-				if ahead, behind, ok := gitcmd.AheadBehind(mainB); ok {
-					fmt.Printf("   %s %s\n", ui.Dim("compared to "+mainB+":"), describeAheadBehind(ahead, behind))
-				}
-			}
-		}
-
-		// --- Changes since last save ---
-		lines, err := gitcmd.StatusPorcelain()
+		s, err := ops.CurrentStatus()
 		if err != nil {
 			return err
 		}
-		fmt.Println()
-		if !hasCommits {
-			ui.Info("You haven't saved anything yet.")
-			ui.Hint("Make your first save with %s.", ui.Bold(`gitle save "first version"`))
-		} else if len(lines) == 0 {
-			ui.Success("Everything is saved — nothing has changed.")
-		}
-		if len(lines) > 0 {
-			printChanges(lines)
-			ui.Hint("Save these with %s.", ui.Bold(`gitle save "..."`))
-		}
-
-		// --- How you compare to the online copy ---
-		if hasCommits {
-			printOnlineStatus()
-		}
+		printStatus(s)
 		return nil
 	},
 }
 
+// printStatus renders a status snapshot as gitle's plain-English report.
+func printStatus(s ops.Status) {
+	// --- Header: project + branch + position vs main ---
+	if s.Name != "" {
+		ui.Plain("📦 %s", ui.Bold(s.Name))
+	}
+	if s.Branch != "" {
+		ui.Plain("   %s %s", ui.Dim("on branch"), ui.Cyan(s.Branch))
+	}
+	if s.VsMain != nil {
+		ui.Plain("   %s %s", ui.Dim("compared to "+s.MainBranch+":"), describeAheadBehind(*s.VsMain))
+	}
+
+	// --- Changes since last save ---
+	ui.Blank()
+	if !s.HasCommits {
+		ui.Info("You haven't saved anything yet.")
+		ui.Hint("Make your first save with %s.", ui.Bold(`gitle save "first version"`))
+	} else if len(s.Changes) == 0 {
+		ui.Success("Everything is saved — nothing has changed.")
+	}
+	if len(s.Changes) > 0 {
+		printChanges(s.Changes)
+		ui.Hint("Save these with %s.", ui.Bold(`gitle save "..."`))
+	}
+
+	// --- How you compare to the online copy ---
+	if s.HasCommits {
+		printOnlineStatus(s)
+	}
+}
+
 // printOnlineStatus reports whether the branch is in sync with, ahead of, or
 // behind its online copy.
-func printOnlineStatus() {
-	if !gitcmd.HasUpstream() {
+func printOnlineStatus(s ops.Status) {
+	if !s.HasUpstream {
 		ui.Hint("Not online yet — share it with %s.", ui.Bold("gitle send"))
 		return
 	}
-	ahead, behind, ok := gitcmd.AheadBehind("@{upstream}")
-	switch {
-	case !ok:
+	if s.VsUpstream == nil {
 		return
+	}
+	ahead, behind := s.VsUpstream.Ahead, s.VsUpstream.Behind
+	switch {
 	case ahead > 0 && behind > 0:
 		ui.Warn("%d to send and %d to grab. Run %s, then %s.",
 			ahead, behind, ui.Bold("gitle grab"), ui.Bold("gitle send"))
@@ -83,16 +82,16 @@ func printOnlineStatus() {
 }
 
 // describeAheadBehind renders an ahead/behind pair in colour.
-func describeAheadBehind(ahead, behind int) string {
+func describeAheadBehind(ab ops.AheadBehind) string {
 	switch {
-	case ahead == 0 && behind == 0:
+	case ab.InSync():
 		return ui.Dim("in sync")
-	case ahead > 0 && behind > 0:
-		return ui.Green(fmt.Sprintf("%d ahead", ahead)) + ui.Dim(", ") + ui.Yellow(fmt.Sprintf("%d behind", behind))
-	case ahead > 0:
-		return ui.Green(fmt.Sprintf("%d ahead", ahead))
+	case ab.Ahead > 0 && ab.Behind > 0:
+		return ui.Green(fmt.Sprintf("%d ahead", ab.Ahead)) + ui.Dim(", ") + ui.Yellow(fmt.Sprintf("%d behind", ab.Behind))
+	case ab.Ahead > 0:
+		return ui.Green(fmt.Sprintf("%d ahead", ab.Ahead))
 	default:
-		return ui.Yellow(fmt.Sprintf("%d behind", behind))
+		return ui.Yellow(fmt.Sprintf("%d behind", ab.Behind))
 	}
 }
 
@@ -104,17 +103,17 @@ func saves(n int) string {
 	return fmt.Sprintf("%d saved points", n)
 }
 
-// printChanges groups porcelain output into friendly, colour-coded buckets.
-func printChanges(lines []string) {
+// printChanges groups changes into friendly, colour-coded buckets.
+func printChanges(changes []ops.Change) {
 	var added, changed, removed []string
-	for _, c := range parseChanges(lines) {
-		switch c.label {
-		case "New":
-			added = append(added, c.path)
-		case "Removed":
-			removed = append(removed, c.path)
+	for _, c := range changes {
+		switch c.Kind {
+		case ops.ChangeNew:
+			added = append(added, c.Path)
+		case ops.ChangeRemoved:
+			removed = append(removed, c.Path)
 		default:
-			changed = append(changed, c.path)
+			changed = append(changed, c.Path)
 		}
 	}
 

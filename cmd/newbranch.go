@@ -1,7 +1,9 @@
 package cmd
 
 import (
-	"github.com/edbarbera/gitle/internal/gitcmd"
+	"errors"
+
+	"github.com/edbarbera/gitle/internal/ops"
 	"github.com/edbarbera/gitle/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -16,18 +18,21 @@ var newBranchCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		if gitcmd.BranchExists(name) {
+		err := ops.NewBranch(name)
+		switch {
+		case err == nil:
+			ui.Success("Created and switched to %s.", ui.Bold(name))
+			ui.Hint("Save work here with %s; it stays separate until you merge.", ui.Bold(`gitle save "..."`))
+			return nil
+
+		case errors.Is(err, ops.ErrBranchExists):
 			ui.Error("A line of work called %q already exists.", name)
 			ui.Hint("Jump onto it with %s instead.", ui.Bold("gitle switch "+name))
 			return errSilent
-		}
 
-		if err := gitcmd.Run("checkout", "-b", name); err != nil {
+		default:
 			return err
 		}
-		ui.Success("Created and switched to %s.", ui.Bold(name))
-		ui.Hint("Save work here with %s; it stays separate until you merge.", ui.Bold(`gitle save "..."`))
-		return nil
 	},
 }
 

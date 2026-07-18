@@ -46,10 +46,37 @@ gitle start
 
 That's it. 🎉
 
+## 🖥️ The dashboard
+
+Run `gitle` on its own to open a live dashboard — everything that's changed,
+every line of work, everything you've saved, in one screen. The everyday
+actions are a single keypress away.
+
+```
+📦 my-app · on main · 2 to send
+╭────────────────────────────────╮╭──────────────────────────────────────────╮
+│ Changes (3)                    ││ Details                                  │
+│ ❯ ~ README.md                  ││ diff --git a/README.md b/README.md        │
+│   + src/new.go                 ││ @@ -1,3 +1,4 @@                          │
+│   - old.txt                    ││ +a new line                              │
+╰────────────────────────────────╯│                                          │
+╭────────────────────────────────╮│                                          │
+│ Lines of work (3)              ││                                          │
+│   ● main                       ││                                          │
+│     feature-login              ││                                          │
+╰────────────────────────────────╯╰──────────────────────────────────────────╯
+Press s to save your changes.
+s save • p send online • g grab latest • tab next panel • ? help • q quit
+```
+
+Prefer typing commands? Every one of them still works exactly as before, and
+piping or scripting gitle gives you the same plain text it always did.
+
 ## ⚡ Commands
 
 | You type | What it does |
 | --- | --- |
+| `gitle` | Open the dashboard |
 | `gitle start` | Guided setup for a new project |
 | `gitle save "message"` | Save a snapshot of your work |
 | `gitle save --ai` | Same, but a free AI model drafts the description |
@@ -71,10 +98,11 @@ Run `gitle help` any time for the full, friendly list.
 ```console
 $ gitle save "add login page"
 
-[?] Which changes do you want to save?
-❯ ● New:     login.js
-  ● Changed: app.js
-  ↑/↓ move · space toggle · a all · n none · enter confirm
+Which changes do you want to save?
+> ✓ New:     login.js
+  ✓ Changed: app.js
+
+  ↑/↓ move · x toggle · enter confirm
 
 ✓ Saved 2 file(s): "add login page"
   Send it online with gitle send.
@@ -97,7 +125,7 @@ gitle warns you — in plain English — before anything risky:
 - 📦 **Big files** — flags oversized files that would bloat your project
 - 🌿 **Pushing to main** — nudges you to make a branch on shared projects
 - 🔄 **Out of sync** — tells you to `gitle grab` when others pushed first
-- 🧩 **Conflicts** — `gitle fix-conflicts` walks you through clashes file by file, no raw markers needed
+- 🧩 **Conflicts** — `gitle fix-conflicts` shows both versions side by side, one clash at a time, and you pick which to keep; no raw markers, no `<<<<<<<`
 - 🤖 **AI descriptions (opt-in)** — `gitle save --ai` drafts your description from the diff using your own free [OpenRouter](https://openrouter.ai) key; nothing is sent anywhere unless you pass `--ai`, and you can always edit or replace the suggestion
 - ⚠️ **Throwing away work** — always confirms before discarding changes
 

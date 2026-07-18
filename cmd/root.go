@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/edbarbera/gitle/internal/gitcmd"
+	"github.com/edbarbera/gitle/internal/tui"
 	"github.com/edbarbera/gitle/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -23,12 +24,30 @@ good habits automatically, so you can save and share your work without
 memorising git.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	Args:          cobra.NoArgs,
 	// Every command needs git on PATH.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if !gitcmd.Available() {
 			return gitcmd.ErrGitMissing
 		}
 		return nil
+	},
+	// Bare `gitle` opens the dashboard in a terminal, and falls back to the
+	// command overview anywhere else — piped, scripted, or redirected, where
+	// a full-screen interface would be meaningless or actively unhelpful.
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if !ui.Interactive() {
+			renderHelp()
+			return nil
+		}
+		if !gitcmd.InRepo() {
+			// Nothing to show a dashboard of yet. Point at the setup wizard
+			// rather than opening an empty screen.
+			ui.Info("This folder isn't set up for gitle yet.")
+			ui.Hint("Run %s here to get started.", ui.Bold("gitle start"))
+			return nil
+		}
+		return tui.Run()
 	},
 }
 

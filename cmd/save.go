@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/edbarbera/gitle/internal/ai"
 	"github.com/edbarbera/gitle/internal/gitcmd"
+	"github.com/edbarbera/gitle/internal/ops"
 	"github.com/edbarbera/gitle/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -35,37 +36,30 @@ result a commit.`,
 			message = args[0]
 		}
 
-		lines, err := gitcmd.StatusPorcelain()
+		changes, err := ops.Changes()
 		if err != nil {
 			return err
 		}
-		if len(lines) == 0 {
+		if len(changes) == 0 {
 			ui.Info("Nothing to save — your work is already up to date.")
 			return nil
 		}
-		changes := parseChanges(lines)
 
 		var paths []string
 		if saveAll {
 			// Skip the checklist: include every change.
-			for _, c := range changes {
-				paths = append(paths, c.path)
-			}
+			paths = ops.Paths(changes)
 		} else {
 			// Let the user pick which files to include (all ticked by default).
 			// Without a terminal this returns everything, preserving "save all".
-			labels := make([]string, len(changes))
-			for i, c := range changes {
-				labels[i] = c.pickLabel()
-			}
-			picked := ui.Pick("Which changes do you want to save?", labels)
+			picked := ui.Pick("Which changes do you want to save?", pickLabels(changes))
 			if len(picked) == 0 {
 				ui.Info("Nothing selected — nothing was saved.")
 				return nil
 			}
 			paths = make([]string, len(picked))
 			for i, idx := range picked {
-				paths[i] = changes[idx].path
+				paths[i] = changes[idx].Path
 			}
 		}
 
@@ -75,17 +69,14 @@ result a commit.`,
 			return nil
 		}
 
-		// Stage exactly the picked paths (covers new, changed and removed)
-		// before asking for a message, so an --ai suggestion can see a real
-		// diff and nothing unpicked sneaks into the eventual commit.
-		addArgs := append([]string{"add", "-A", "--"}, paths...)
-		if err := gitcmd.Run(addArgs...); err != nil {
+		// Stage before asking for a message, so an --ai suggestion can see a
+		// real diff and nothing unpicked sneaks into the eventual commit.
+		if err := ops.Stage(paths); err != nil {
 			return err
 		}
 
-		// Ask for a description now, after picking, if none was given.
 		if message == "" {
-			if !ui.IsInteractive() {
+			if !ui.Interactive() {
 				ui.Error("Please describe what you changed.")
 				ui.Hint("Example: %s", ui.Bold(`gitle save "fixed the login bug"`))
 				return errSilent
@@ -101,16 +92,16 @@ result a commit.`,
 			}
 		}
 
-		commitArgs := append([]string{"commit", "-m", message, "--"}, paths...)
-		if err := gitcmd.Run(commitArgs...); err != nil {
+		result, err := ops.Commit(message, paths)
+		if err != nil {
 			return err
 		}
 
-		ui.Success("Saved %d file(s): %q", len(paths), message)
-		if gitcmd.HasChanges() {
+		ui.Success("Saved %d file(s): %q", len(result.Paths), result.Message)
+		if result.Leftover {
 			ui.Hint("Some changes were left unsaved — run %s again when ready.", ui.Bold("gitle save"))
 		}
-		if gitcmd.HasUpstream() {
+		if result.HasUpstream {
 			ui.Hint("Send it online with %s.", ui.Bold("gitle send"))
 		} else {
 			ui.Hint("Share it online with %s once you're ready.", ui.Bold("gitle send"))
@@ -132,10 +123,15 @@ func suggestMessage() string {
 	if err != nil || diff == "" {
 		return ""
 	}
-	msg, err := ai.SuggestMessage(diff)
-	if err != nil {
-		return ""
-	}
+
+	var msg string
+	// The model call crosses the network, so show something moving rather
+	// than letting the terminal sit there looking hung.
+	_ = ui.Spinner("Drafting a description...", func() error {
+		var err error
+		msg, err = ai.SuggestMessage(diff)
+		return err
+	})
 	return msg
 }
 

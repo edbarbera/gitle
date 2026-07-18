@@ -1,10 +1,12 @@
 package cmd
 
 import (
-	"github.com/edbarbera/gitle/internal/gitcmd"
+	"github.com/edbarbera/gitle/internal/ops"
 	"github.com/edbarbera/gitle/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+var historyLimit int
 
 var historyCmd = &cobra.Command{
 	Use:     "history",
@@ -13,14 +15,28 @@ var historyCmd = &cobra.Command{
 	Args:    cobra.NoArgs,
 	PreRunE: requireRepo,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if !gitcmd.HasCommits() {
+		commits, err := ops.History(historyLimit)
+		if err != nil {
+			return err
+		}
+		if len(commits) == 0 {
 			ui.Info("No history yet — save your first snapshot with %s.", ui.Bold(`gitle save "..."`))
 			return nil
 		}
-		return gitcmd.Run("log", "--oneline", "--graph", "--decorate", "--all")
+
+		for _, c := range commits {
+			line := ui.Dim(c.Hash) + "  " + c.Subject
+			if c.Refs != "" {
+				line += " " + ui.Cyan("("+c.Refs+")")
+			}
+			ui.Plain("%s", line)
+			ui.Plain("%s", ui.Dim("          "+c.Author+", "+c.When))
+		}
+		return nil
 	},
 }
 
 func init() {
+	historyCmd.Flags().IntVarP(&historyLimit, "number", "n", 20, "how many saved points to show (0 for all)")
 	rootCmd.AddCommand(historyCmd)
 }

@@ -42,14 +42,14 @@ var helpGroups = []helpGroup{
 func renderHelp() {
 	ui.Banner()
 	for _, g := range helpGroups {
-		fmt.Println(ui.Bold(g.title))
+		ui.Plain("%s", ui.Bold(g.title))
 		for _, e := range g.entries {
-			fmt.Printf("  %s  %s\n", ui.Cyan(fmt.Sprintf("%-14s", e.name)), ui.Dim(e.desc))
+			ui.Plain("  %s  %s", ui.Cyan(fmt.Sprintf("%-14s", e.name)), ui.Dim(e.desc))
 		}
-		fmt.Println()
+		ui.Blank()
 	}
-	fmt.Println(ui.Dim("Run 'gitle <command> --help' for more on any command."))
-	fmt.Println(ui.Dim("Check your version with 'gitle --version'."))
+	ui.Plain("%s", ui.Dim("Run 'gitle <command> --help' for more on any command."))
+	ui.Plain("%s", ui.Dim("Check your version with 'gitle --version'."))
 }
 
 func init() {

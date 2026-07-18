@@ -111,6 +111,65 @@ func HasCommits() bool {
 	return err == nil
 }
 
+// RunQuiet executes `git <args...>` and swallows its output, returning git's
+// stderr inside the error when it fails. Use this — never Run — for anything
+// internal/ops does: a full-screen UI owns the terminal, and git printing
+// straight to it would tear the frame apart.
+func RunQuiet(args ...string) error {
+	if !Available() {
+		return ErrGitMissing
+	}
+	cmd := exec.Command("git", args...)
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		if msg := strings.TrimSpace(errBuf.String()); msg != "" {
+			return errors.New(msg)
+		}
+		return err
+	}
+	return nil
+}
+
+// CaptureAllowFail returns git's stdout whether or not the command succeeded.
+// Some git commands report a difference by exiting non-zero (`diff
+// --no-index` is the common one), so a failed status doesn't mean there's
+// nothing worth reading.
+func CaptureAllowFail(args ...string) (string, error) {
+	if !Available() {
+		return "", ErrGitMissing
+	}
+	cmd := exec.Command("git", args...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	return out.String(), err
+}
+
+// RunQuietStderr is RunQuiet but hands back git's raw stderr as well as the
+// error, for callers that need to read the message to explain what went wrong
+// (a rejected push, say) rather than just report failure.
+func RunQuietStderr(args ...string) (string, error) {
+	return RunQuietStderrEnv(nil, args...)
+}
+
+// RunQuietStderrEnv is RunQuietStderr with extra environment variables layered
+// over the current environment, for the few settings that have to be passed to
+// git that way (GIT_TERMINAL_PROMPT, say).
+func RunQuietStderrEnv(env []string, args ...string) (string, error) {
+	if !Available() {
+		return "", ErrGitMissing
+	}
+	cmd := exec.Command("git", args...)
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
+	err := cmd.Run()
+	return errBuf.String(), err
+}
+
 // RunCaptureStderr runs git streaming stdout to the terminal (and keeping the
 // user's stdin/tty for auth prompts), while capturing stderr so the caller can
 // translate git's error into plain English. Returns the captured stderr.

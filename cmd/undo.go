@@ -1,7 +1,9 @@
 package cmd
 
 import (
-	"github.com/edbarbera/gitle/internal/gitcmd"
+	"errors"
+
+	"github.com/edbarbera/gitle/internal/ops"
 	"github.com/edbarbera/gitle/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -23,12 +25,11 @@ to your last save. That one cannot be undone, so gitle always asks first.`,
 			return runUndoHard()
 		}
 
-		if !gitcmd.HasCommits() {
+		last, err := ops.LastSaveMessage()
+		if errors.Is(err, ops.ErrNothingToUndo) {
 			ui.Info("There's nothing to undo yet — you haven't saved anything.")
 			return nil
 		}
-
-		last, err := gitcmd.Capture("log", "-1", "--pretty=%s")
 		if err != nil {
 			return err
 		}
@@ -40,17 +41,8 @@ to your last save. That one cannot be undone, so gitle always asks first.`,
 			return nil
 		}
 
-		if _, err := gitcmd.Capture("rev-parse", "HEAD~1"); err != nil {
-			// No parent: this is the very first save. Remove the pointer so the
-			// repo goes back to "nothing saved yet"; the files stay untouched.
-			if err := gitcmd.Run("update-ref", "-d", "HEAD"); err != nil {
-				return err
-			}
-		} else {
-			// --soft keeps every change staged in the working tree; nothing is lost.
-			if err := gitcmd.Run("reset", "--soft", "HEAD~1"); err != nil {
-				return err
-			}
+		if err := ops.UndoLastSave(); err != nil {
+			return err
 		}
 		ui.Success("Undid your last save. Your changes are still here.")
 		ui.Hint("Save again with %s when you're ready.", ui.Bold(`gitle save "..."`))
@@ -61,23 +53,23 @@ to your last save. That one cannot be undone, so gitle always asks first.`,
 // runUndoHard throws away all uncommitted changes after a clear warning and an
 // explicit confirmation. This is destructive and cannot be reversed.
 func runUndoHard() error {
-	lines, err := gitcmd.StatusPorcelain()
+	changes, err := ops.Changes()
 	if err != nil {
 		return err
 	}
-	if len(lines) == 0 {
+	if len(changes) == 0 {
 		ui.Info("Nothing to discard — you have no uncommitted changes.")
 		return nil
 	}
 
 	ui.Warn("This will permanently discard uncommitted changes.")
 	ui.Plain("    Files affected:")
-	for _, c := range parseChanges(lines) {
-		ui.Plain("      %s %s", c.label+":", c.color(c.path))
+	for _, c := range changes {
+		ui.Plain("      %s %s", c.Kind.Label()+":", changeColor(c.Kind)(c.Path))
 	}
 	ui.Warn("This cannot be undone.")
 
-	if !ui.IsInteractive() {
+	if !ui.Interactive() {
 		ui.Error("Refusing to discard without a confirmation.")
 		ui.Hint("Run %s in a terminal so it can ask you first.", ui.Bold("gitle undo --hard"))
 		return errSilent
@@ -87,20 +79,9 @@ func runUndoHard() error {
 		return nil
 	}
 
-	// Revert tracked files to the last save, then remove new untracked files.
-	if gitcmd.HasCommits() {
-		if err := gitcmd.Run("reset", "--hard", "HEAD"); err != nil {
-			return err
-		}
-	} else {
-		if err := gitcmd.Run("reset", "-q"); err != nil {
-			return err
-		}
-	}
-	if err := gitcmd.Run("clean", "-fd"); err != nil {
+	if err := ops.Discard(); err != nil {
 		return err
 	}
-
 	ui.Success("Discarded all uncommitted changes. This folder now matches your last save.")
 	return nil
 }
