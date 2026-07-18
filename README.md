@@ -28,7 +28,7 @@ make sense — `save`, `send`, `grab` — while keeping you on good habits
 automatically. No jargon, no memorising commands, no fear of breaking things.
 Stuck for words when saving? `gitle save --ai` has a free AI model draft the
 description for you, straight from your diff — opt-in, bring your own free
-key, nothing sent anywhere unless you ask for it.
+key.
 
 ## 📦 Install
 
